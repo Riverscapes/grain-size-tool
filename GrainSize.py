@@ -42,7 +42,7 @@ def main(dem,
     arcpy.CheckOutExtension("Spatial")  # We'll be using a bunch of spatial analysis tools
 
     if testing:
-        arcpy.AddMessage("TESTING")
+        arcpy.AddMessage("Currently in TestMode")
 
     """Creates the temporary data folder, where we'll put all our intermediate results"""
     if not os.path.exists(outputFolder+"\\temporaryData"):

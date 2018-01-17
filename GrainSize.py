@@ -182,6 +182,8 @@ def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, region
             precip = findPrecipitation(precipMap, tempData, row[0].lastPoint)
             flowAccAtPoint = findFlowAccumulation(flowAccumulation, tempData, cellSize)
             try:
+                if lastPointElevation < 0 or firstPointElevation < 0 or precip < 0 or flowAccAtPoint < 0:
+                    raise ValueError("Something wasn't found properly")
                 slope = findSlope(row, firstPointElevation, lastPointElevation)
                 width = findWidth(flowAccAtPoint, precip)
                 q_2 = findQ_2(flowAccAtPoint, firstPointElevation, precip, regionNumber, tempData)
@@ -194,7 +196,7 @@ def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, region
                 i += 1
                 arcpy.SetProgressorLabel("Creating Reach " + str(i) + " out of " + numReachesString)
                 arcpy.SetProgressorPosition()
-            except:
+            except Exception:
                 if lastPointElevation < 0 or firstPointElevation < 0:
                     arcpy.AddWarning("Elevation was not found properly for reach " + str(i))
                 elif precip < 0:

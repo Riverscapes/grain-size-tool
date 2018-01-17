@@ -115,7 +115,7 @@ def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, region
 
     """If testing, only go through the loop once. Otherwise, go through every reach"""
     if testing:
-        numTests = 500
+        numTests = 100
         slopeTime = 0.0
         precipTime = 0.0
         flowAccTime = 0.0
@@ -181,7 +181,7 @@ def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, region
             firstPointElevation = findElevationAtPoint(dem, row[0].firstPoint, tempData)
             precip = findPrecipitation(precipMap, tempData, row[0].lastPoint)
             flowAccAtPoint = findFlowAccumulation(flowAccumulation, tempData, cellSize)
-
+            
             slope = findSlope(row, firstPointElevation, lastPointElevation)
             width = findWidth(flowAccAtPoint, precip)
             q_2 = findQ_2(flowAccAtPoint, firstPointElevation, precip, regionNumber, tempData)

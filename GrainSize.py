@@ -181,19 +181,26 @@ def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, region
             firstPointElevation = findElevationAtPoint(dem, row[0].firstPoint, tempData)
             precip = findPrecipitation(precipMap, tempData, row[0].lastPoint)
             flowAccAtPoint = findFlowAccumulation(flowAccumulation, tempData, cellSize)
+            try:
+                slope = findSlope(row, firstPointElevation, lastPointElevation)
+                width = findWidth(flowAccAtPoint, precip)
+                q_2 = findQ_2(flowAccAtPoint, firstPointElevation, precip, regionNumber, tempData)
 
-            slope = findSlope(row, firstPointElevation, lastPointElevation)
-            width = findWidth(flowAccAtPoint, precip)
-            q_2 = findQ_2(flowAccAtPoint, firstPointElevation, precip, regionNumber, tempData)
+                reach = Reach(width, q_2, slope, row[0])
+                reach.calculateGrainSize(nValue, t_cValue)
 
-            reach = Reach(width, q_2, slope, row[0])
-            reach.calculateGrainSize(nValue, t_cValue)
+                reaches.append(reach)
 
-            reaches.append(reach)
-
-            i += 1
-            arcpy.SetProgressorLabel("Creating Reach " + str(i) + " out of " + numReachesString)
-            arcpy.SetProgressorPosition()
+                i += 1
+                arcpy.SetProgressorLabel("Creating Reach " + str(i) + " out of " + numReachesString)
+                arcpy.SetProgressorPosition()
+            except:
+                if lastPointElevation < 0 or firstPointElevation < 0:
+                    arcpy.AddWarning("Elevation was not found properly for reach " + str(i))
+                elif precip < 0:
+                    arcpy.AddWarning("Precip was not found properly for reach " + str(i))
+                elif flowAccAtPoint < 0:
+                    arcpy.AddWarning("Flow accumulation was not found properly for reach " + str(i))
 
     del row
     del polylineCursor

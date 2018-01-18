@@ -183,7 +183,6 @@ def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, region
             flowAccAtPoint = findFlowAccumulation(flowAccumulation, tempData, cellSize)
             i += 1
             try:
-                arcpy.AddMessage("Reach: " + str(i))
                 if lastPointElevation < 0 or firstPointElevation < 0 or precip < 0 or flowAccAtPoint < 0:
                     raise Exception("Something wasn't found properly")
                 slope = findSlope(row, firstPointElevation, lastPointElevation)

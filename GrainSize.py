@@ -281,8 +281,6 @@ def findWidth(flowAccAtPoint, precip):
     :param precip: A float with the precipitation at a point
     :return: Estimated width
     """
-    arcpy.AddMessage("Flow Accumulation: " + str(flowAccAtPoint))
-    arcpy.AddMessage("Precipitation: " + str(precip))
     width = 0.177 * (flowAccAtPoint ** 0.397) * (precip ** 0.453)  # This is the equation we're using to estimate width
     if width < .3:  # establishes a minimum width value
         width = .3

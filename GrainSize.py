@@ -181,22 +181,10 @@ def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, region
             firstPointElevation = findElevationAtPoint(dem, row[0].firstPoint, tempData)
             precip = findPrecipitation(precipMap, tempData, row[0].lastPoint)
             flowAccAtPoint = findFlowAccumulation(flowAccumulation, tempData, cellSize)
-            
-            slope = findSlope(row, firstPointElevation, lastPointElevation)
-            width = findWidth(flowAccAtPoint, precip)
-            q_2 = findQ_2(flowAccAtPoint, firstPointElevation, precip, regionNumber, tempData)
-
-            reach = Reach(width, q_2, slope, row[0])
-            reach.calculateGrainSize(nValue, t_cValue)
-
-            reaches.append(reach)
-
-            i += 1
-            arcpy.SetProgressorLabel("Creating Reach " + str(i) + " out of " + numReachesString)
-            arcpy.SetProgressorPosition()
             try:
+                arcpy.AddMessage("Reach: " + str(i))
                 if lastPointElevation < 0 or firstPointElevation < 0 or precip < 0 or flowAccAtPoint < 0:
-                    raise ValueError("Something wasn't found properly")
+                    raise Exception("Something wasn't found properly")
                 slope = findSlope(row, firstPointElevation, lastPointElevation)
                 width = findWidth(flowAccAtPoint, precip)
                 q_2 = findQ_2(flowAccAtPoint, firstPointElevation, precip, regionNumber, tempData)
@@ -293,6 +281,8 @@ def findWidth(flowAccAtPoint, precip):
     :param precip: A float with the precipitation at a point
     :return: Estimated width
     """
+    arcpy.AddMessage("Flow Accumulation: " + str(flowAccAtPoint))
+    arcpy.AddMessage("Precipitation: " + str(precip))
     width = 0.177 * (flowAccAtPoint ** 0.397) * (precip ** 0.453)  # This is the equation we're using to estimate width
     if width < .3:  # establishes a minimum width value
         width = .3
@@ -323,7 +313,10 @@ def findFlowAccumulation(flowAccumulation, tempData, cellSize):
     arcpy.Buffer_analysis(tempData + "\point.shp", tempData + "\pointBuffer.shp", "20 Meters")
     arcpy.PolygonToRaster_conversion(tempData + "\pointBuffer.shp", "FID", tempData + "\pointBufferRaster.tif",
                                      cellsize=sqrt(cellSize))
-    maxFlow = arcpy.sa.ZonalStatistics(tempData + "\pointBufferRaster.tif", "Value", flowAccumulation, "MAXIMUM")
+    try:
+        maxFlow = arcpy.sa.ZonalStatistics(tempData + "\pointBufferRaster.tif", "Value", flowAccumulation, "MAXIMUM")
+    except:
+        return -9999
     arcpy.sa.ExtractValuesToPoints(tempData + "\point.shp", maxFlow, tempData + "\\flowPoint")
 
     searchCursor = arcpy.da.SearchCursor(tempData + "\\flowPoint.shp", "RASTERVALU")

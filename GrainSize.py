@@ -345,14 +345,17 @@ def findPrecipitation(precipMap, tempData, point):
     cursor.insertRow([point])
     del cursor
     """
-    pointLayer = tempData + "\point.shp"
-    arcpy.Intersect_analysis([pointLayer, precipMap], "precipPoint")
-    searchCursor = arcpy.da.SearchCursor(tempData + "\precipPoint.shp", "Inches")
-    row = searchCursor.next()
-    precip = row[0]
-    precip *= 2.54  # converts to centimeters
-    del row, searchCursor
-    return precip
+    try:
+        pointLayer = tempData + "\point.shp"
+        arcpy.Intersect_analysis([pointLayer, precipMap], "precipPoint")
+        searchCursor = arcpy.da.SearchCursor(tempData + "\precipPoint.shp", "Inches")
+        row = searchCursor.next()
+        precip = row[0]
+        precip *= 2.54  # converts to centimeters
+        del row, searchCursor
+        return precip
+    except:
+        return -9999
 
 
 def findElevationAtPoint(dem, point, tempData):

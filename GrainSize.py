@@ -37,7 +37,6 @@ def main(dem,
     :param regionNumber: What region we use to calculate our Q_2 value
     :return: None
     """
-    # TODO Implement projection checks. Look into sr.abbreviation, sr.alias,
     arcpy.env.overwriteOutput = True
     arcpy.CheckOutExtension("Spatial")  # We'll be using a bunch of spatial analysis tools
 
@@ -115,7 +114,7 @@ def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, region
 
     """If testing, only go through the loop once. Otherwise, go through every reach"""
     if testing:
-        numTests = 100
+        numTests = 10
         slopeTime = 0.0
         precipTime = 0.0
         flowAccTime = 0.0
@@ -262,6 +261,8 @@ def findQ_2(flowAccAtPoint, elevation, precip, regionNumber, tempData):
         q_2 = 9.49 * (flowAccAtPoint ** 0.903) * ((elevation / 1000)**0.055)
     elif regionNumber == 16:
         q_2 = 0.000141 * (flowAccAtPoint ** 0.904) * (precip ** 3.25)
+    elif regionNumber == 26:
+        q_2 = 4150 * (flowAccAtPoint ** 0.553) * ((elevation / 1000) ** -2.45)
     elif regionNumber == 100:
         minJanTemp = getMinJanTemp(tempData)
         q_2 = .00013 * (flowAccAtPoint**0.8) * (precip ** 1.24) * ((minJanTemp + 273) ** 2.53)

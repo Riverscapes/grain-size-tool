@@ -30,7 +30,7 @@ def main(dem,
     :param dem: The path to a DEM file
     :param streamNetwork: The path to a .shp file that contains our stream network
     :param precipMap: The path to a .shp file that contains polygons that have precipitation data
-    :param huc10: The region that our stream network will be clipped to
+    :param clippingRegion: The region that our stream network will be clipped to
     :param outputFolder: Where we want to put our output
     :param nValue: What value we use for our Manning coefficient. Important for our equation
     :param t_cValue: What value we use for our Shields stress coefficient. Important for our equation
@@ -73,9 +73,6 @@ def main(dem,
 
     """Writes our output to a folder"""
     writeOutput(reachArray, outputDataPath, arcpy.Describe(streamNetwork).spatialReference)
-
-    """Writes data to a text file. Delete in final build"""
-    writeResults(reachArray, testing, outputDataPath)
 
 
 def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, regionNumber, tempData, nValue, t_cValue):

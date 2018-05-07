@@ -53,11 +53,7 @@ def main(dem,
     precipSR = arcpy.Describe(precipMap).spatialReference
     if streamSR.PCSName != demSR.PCSName != precipSR.PCSName != precipSR.PCSName:
         arcpy.AddError("DEM AND STREAM NETWORK USE DIFFERENT PROJECTIONS")
-
-    """Creates our output folder, where we'll put our final results"""
-    if not os.path.exists(outputFolder+"\GrainSize"):
-        os.makedirs(outputFolder+"\GrainSize")
-    outputDataPath = outputFolder+"\GrainSize"
+        raise Exception("DEM AND STREAM NETWORK USE DIFFERENT PROJECTIONS")
 
     """Clips our stream network to a HUC10 region"""
     if clippingRegion != None:
@@ -72,7 +68,7 @@ def main(dem,
                              nValue, t_cValue)
 
     """Writes our output to a folder"""
-    writeOutput(reachArray, outputDataPath, arcpy.Describe(streamNetwork).spatialReference)
+    writeOutput(reachArray, outputFolder, dem, streamNetwork, precipMap, nValue, t_cValue, regionNumber)
 
 
 def makeReaches(testing, dem, flowAccumulation, streamNetwork, precipMap, regionNumber, tempData, nValue, t_cValue):
@@ -391,34 +387,68 @@ def findElevationAtPoint(dem, point, tempData):
     # return float(arcpy.GetCellValue_management(dem, str(point.X) + " " + str(point.Y)).getOutput(0))
 
 
-def writeResults(reachArray, testing, outputData):
-    """This function is meant to save the results for future study"""
-    testOutput = open(outputData + "\Data(readable).txt", "w")
-    i = 0
-    for reach in reachArray:
-        i += 1
-        testOutput.write("Reach " + str(i) + ":")
-        testOutput.write("\nWidth: " + str(reach.width) + " meters")
-        testOutput.write("\nQ_2: " + str(reach.q_2) + " cubic meters per second")
-        testOutput.write("\nSlope: " + str(reach.slope))
-        testOutput.write("\nGrain Size: " + str(reach.grainSize) + "\n\n")
-    testOutput.close()
-
-    inputDataFile = open(outputData + "Data(for_reach_construction).txt", "w")
-    for reach in reachArray:
-        inputDataFile.write("\n" + str(reach.width))
-        inputDataFile.write("\n" + str(reach.q_2))
-        inputDataFile.write("\n" + str(reach.slope))
-        inputDataFile.write("\n" + str(reach.grainSize))
-    inputDataFile.close()
+def writeOutput(reachArray, outputFolder, dem, streamNetwork, precipMap, nValue, t_cValue, regionNumber):
+    """
+    Writes the output to a project folder
+    :param reachArray: The array of streams with grain size values
+    :param outputFolder: Where we want to put our stuff
+    :param dem: The DEM given as input
+    :param streamNetwork: The stream network given as input
+    :param precipMap: The precipitation map given as input
+    :param nValue: The number given for the Manning Coefficient
+    :param t_cValue: The number given for the Critical Shields Stress
+    :param regionNumber: The region we used to calculate Q_2
+    :return:
+    """
+    projectFolder = makeFolder(outputFolder, "GrainSizeProject")
+    writeInputs(projectFolder, dem, streamNetwork, precipMap, nValue, t_cValue, regionNumber)
+    writeAnalyses(projectFolder, reachArray, arcpy.Describe(streamNetwork).spatialReference)
 
 
-def writeOutput(reachArray, outputDataPath, sr):
-    arcpy.env.workspace = outputDataPath
-    outputShape = outputDataPath + "\GrainSize.shp"
-    tempLayer = outputDataPath + "\GrainSize_lyr"
-    outputLayer = outputDataPath + "\GrainSize.lyr"
-    arcpy.CreateFeatureclass_management(outputDataPath, "GrainSize.shp", "POLYLINE", "", "DISABLED", "DISABLED")
+def writeInputs(projectFolder, dem, streamNetwork, precipMap, nValue, t_cValue, regionNumber):
+    """
+    Copies over the inputs into the folder structure
+    :param projectFolder: Where we put everything
+    :param dem: The DEM given as input
+    :param streamNetwork: The stream network given as input
+    :param precipMap: The precipitation map given as input
+    :param nValue: The number given for the Manning Coefficient
+    :param t_cValue: The number given for the Critical Shields Stress
+    :param regionNumber: The region we used to calculate Q_2
+    :return:
+    """
+    inputsFolder = makeFolder(projectFolder, "01_Inputs")
+
+    demFolder = makeFolder(inputsFolder, "01_DEM")
+    demCopy = os.path.join(demFolder, os.path.basename(dem))
+    arcpy.Copy_management(dem, demCopy)
+
+    streamNetworkFolder = makeFolder(inputsFolder, "02_StreamNetwork")
+    streamNetworkCopy = os.path.join(streamNetworkFolder, os.path.basename(streamNetwork))
+    arcpy.Copy_management(streamNetwork, streamNetworkCopy)
+
+    precipFolder = makeFolder(inputsFolder, "03_PrecipMap")
+    precipCopy = os.path.join(precipFolder, os.path.basename(precipMap))
+    arcpy.Copy_management(precipMap, precipCopy)
+    
+    otherValuesFolder = makeFolder(inputsFolder, "04_OtherValues")
+
+
+def writeAnalyses(projectFolder, reachArray, sr):
+    """
+    Writes the outputs
+    :param projectFolder: Where we put our analyses
+    :param reachArray: Our array of reaches with grain size data
+    :param sr: The spatial reference of the output
+    :return:
+    """
+    analysesFolder = makeFolder(projectFolder, "02_Analyses")
+    outputFolder = getOutputFolder(analysesFolder)
+
+    outputShape = outputFolder + "\GrainSize.shp"
+    tempLayer = outputFolder + "\GrainSize_lyr"
+    outputLayer = outputFolder + "\GrainSize.lyr"
+    arcpy.CreateFeatureclass_management(outputFolder, "GrainSize.shp", "POLYLINE", "", "DISABLED", "DISABLED", sr)
     arcpy.AddField_management(outputShape, "GrainSize", "DOUBLE")
 
     insertCursor = arcpy.da.InsertCursor(outputShape, ["SHAPE@", "GrainSize"])
@@ -426,11 +456,37 @@ def writeOutput(reachArray, outputDataPath, sr):
         insertCursor.insertRow([reach.polyline, reach.grainSize])
     del insertCursor
 
-    arcpy.DefineProjection_management(outputShape, sr)
-
     arcpy.MakeFeatureLayer_management(outputShape, tempLayer)
     arcpy.SaveToLayerFile_management(tempLayer, outputLayer)
 
+
+def getOutputFolder(analysesFolder):
+    """
+    Gets us the first untaken Output folder number, makes it, and returns it
+    :param analysesFolder: Where we're looking for output folders
+    :return: String
+    """
+    i = 1
+    outputFolder = os.path.join(analysesFolder, "Output_" + str(i))
+    while os.path.exists(outputFolder):
+        i += 1
+        outputFolder = os.path.join(analysesFolder, "Output_" + str(i))
+
+    os.mkdir(outputFolder)
+    return outputFolder
+
+
+def makeFolder(pathToLocation, newFolderName):
+    """
+    Makes a folder and returns the path to it
+    :param pathToLocation: Where we want to put the folder
+    :param newFolderName: What the folder will be called
+    :return: String
+    """
+    newFolder = os.path.join(pathToLocation, newFolderName)
+    if not os.path.exists(newFolder):
+        os.mkdir(newFolder)
+    return newFolder
 
 if __name__ == '__main__':
     main(os.sys.argv[1],

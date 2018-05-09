@@ -332,14 +332,6 @@ def findPrecipitation(precipMap, tempData, point):
     :param point: Where we want to find precipitation
     :return: Precipitation
     """
-    """
-    sr = arcpy.Describe(precipMap).spatialReference
-    arcpy.env.workspace = tempData
-    arcpy.CreateFeatureclass_management(tempData, "point.shp", "POINT", "", "DISABLED", "DISABLED", sr)
-    cursor = arcpy.da.InsertCursor(tempData + "\point.shp", ["SHAPE@"])
-    cursor.insertRow([point])
-    del cursor
-    """
     try:
         pointLayer = tempData + "\point.shp"
         arcpy.Intersect_analysis([pointLayer, precipMap], "precipPoint")
@@ -430,8 +422,13 @@ def writeInputs(projectFolder, dem, streamNetwork, precipMap, nValue, t_cValue, 
     precipFolder = makeFolder(inputsFolder, "03_PrecipMap")
     precipCopy = os.path.join(precipFolder, os.path.basename(precipMap))
     arcpy.Copy_management(precipMap, precipCopy)
-    
+
     otherValuesFolder = makeFolder(inputsFolder, "04_OtherValues")
+    with open(os.path.join(otherValuesFolder, "OtherValues.txt"), 'w') as textFile:
+        textFile.write("n Value: " + str(nValue) + "\n")
+        textFile.write("t_c Value: " + str(t_cValue) + "\n")
+        textFile.write("Region Number: " + str(regionNumber) + "\n")
+
 
 
 def writeAnalyses(projectFolder, reachArray, sr):

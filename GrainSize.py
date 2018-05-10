@@ -13,6 +13,9 @@ import os
 from GrainSizeReach import Reach
 from math import sqrt
 from timeit import default_timer as timer
+from XMLBuilder import XMLBuilder
+from datetime import datetime
+import uuid
 
 
 def main(dem,
@@ -395,6 +398,7 @@ def writeOutput(reachArray, outputFolder, dem, streamNetwork, precipMap, nValue,
     projectFolder = makeFolder(outputFolder, "GrainSizeProject")
     writeInputs(projectFolder, dem, streamNetwork, precipMap, nValue, t_cValue, regionNumber)
     writeAnalyses(projectFolder, reachArray, arcpy.Describe(streamNetwork).spatialReference)
+    writeXML(projectFolder)
 
 
 def writeInputs(projectFolder, dem, streamNetwork, precipMap, nValue, t_cValue, regionNumber):
@@ -419,7 +423,7 @@ def writeInputs(projectFolder, dem, streamNetwork, precipMap, nValue, t_cValue, 
     streamNetworkCopy = os.path.join(streamNetworkFolder, os.path.basename(streamNetwork))
     arcpy.Copy_management(streamNetwork, streamNetworkCopy)
 
-    precipFolder = makeFolder(inputsFolder, "03_PrecipMap")
+    precipFolder = makeFolder(inputsFolder, "03_Precipitation")
     precipCopy = os.path.join(precipFolder, os.path.basename(precipMap))
     arcpy.Copy_management(precipMap, precipCopy)
 
@@ -484,6 +488,116 @@ def makeFolder(pathToLocation, newFolderName):
     if not os.path.exists(newFolder):
         os.mkdir(newFolder)
     return newFolder
+
+
+def writeXML(projectFolder):
+    """
+    Creates an XML file for the project
+    :param projectFolder: The root of the project folder
+    :return: None
+    """
+    newXMLFilePath = os.path.join(projectFolder, 'project.rs.xml')
+    if os.path.exists(newXMLFilePath):
+        os.remove(newXMLFilePath)
+
+    new_xml_file = XMLBuilder(newXMLFilePath,
+                              "Project",
+                              [('xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance"),
+                               ('xsi:noNamespaceSchemaLocation',
+                                "https://raw.githubusercontent.com/Riverscapes/Program/master/Project/XSD/V1/Project.xsd")])
+
+
+    new_xml_file.add_sub_element(new_xml_file.root, "ProjectType", "GrainSize")
+    addMetaData(new_xml_file)
+    addRealizations(new_xml_file, projectFolder)
+
+    new_xml_file.write()
+
+
+def addMetaData(new_xml_file):
+    """
+    Writes the metadata component of the XML file
+    :param new_xml_file: The XML builder that we're using
+    :return:
+    """
+    meta_data_element = new_xml_file.add_sub_element(new_xml_file.root, "MetaData")
+
+    now = datetime.now()
+    new_xml_file.add_sub_element(meta_data_element, "Meta", now.isoformat(), [("name", "CreatedOn")])
+
+
+def addRealizations(new_xml_file, projectFolder):
+    """
+    Writes the Realizations part of the XML file
+    :param new_xml_file: the XML Builder that we're using
+    :return:
+    """
+    realizations_element = new_xml_file.add_sub_element(new_xml_file.root, "Realizations")
+    grain_size_element = new_xml_file.add_sub_element(realizations_element,
+                                                      "GrainSize",
+                                                      tags=[("dateCreated", datetime.now().isoformat()),
+                                                       ("guid", getUUID()),
+                                                       ("productVersion", "0.0.1")])
+    writeInputsXML(new_xml_file, grain_size_element, os.path.join(projectFolder, "01_Inputs"))
+
+    analysesFolder = os.path.join(projectFolder, "02_Analyses")
+    analyses_element = new_xml_file.add_sub_element(grain_size_element, "Analyses")
+    for folder in os.listdir(analysesFolder):
+        writeAnalysisXML(new_xml_file, analyses_element, os.path.join(analysesFolder, folder))
+
+
+def writeInputsXML(new_xml_file, grain_size_element, input_folder):
+    """
+    Writes the inputs for the grain size project
+    :param new_xml_file: The XMLBuilder
+    :param grain_size_element: The XML node that we want to write to
+    :param input_folder: The folder that contains all the inputs
+    :return:
+    """
+    inputs_element = new_xml_file.add_sub_element(grain_size_element, "Inputs")
+
+    writeSingleInputXML(new_xml_file, inputs_element, "DEM", "01_DEM", input_folder)
+    writeSingleInputXML(new_xml_file, inputs_element, "StreamNetwork", "02_StreamNetwork", input_folder)
+    writeSingleInputXML(new_xml_file, inputs_element, "Precipitation", "03_Precipitation", input_folder)
+    writeSingleInputXML(new_xml_file, inputs_element, "OtherValues", "04_OtherValues", input_folder)
+
+
+def writeSingleInputXML(new_xml_file, inputs_element, nameOfInput, folderName, input_folder):
+    folderPath = os.path.join(input_folder, folderName)
+
+    items_element = new_xml_file.add_sub_element(inputs_element, nameOfInput + "s")
+    for file in os.listdir(folderPath):
+        if file.endswith(".shp") or file.endswith(".tif") or file.endswith("lyr") or file.endswith(".txt"):
+            item_element = new_xml_file.add_sub_element(items_element, nameOfInput)
+            new_xml_file.add_sub_element(item_element, "Name", file)
+            new_xml_file.add_sub_element(item_element, "Path", "01_Inputs\\" + folderName + "\\" + file)
+
+
+def writeAnalysisXML(new_xml_file, analyses_element, output_folder):
+    """
+    Writes an analysis
+    :param new_xml_file: The XMLBuilder
+    :param analyses_element: The XML node that we want to write to
+    :param output_folder: The folder that contains the output that we want to write XML for
+    :return:
+    """
+    analysis_element = new_xml_file.add_sub_element(analyses_element, "Analysis")
+    new_xml_file.add_sub_element(analysis_element, "Name", os.path.basename(output_folder))
+
+    model_element = new_xml_file.add_sub_element(analysis_element, "Model")
+    outputs_element = new_xml_file.add_sub_element(model_element, "Outputs")
+    for file in os.listdir(output_folder):
+        if file.endswith("lyr"):
+            outputFolderBasename = os.path.basename(output_folder)
+            stream_network_element = new_xml_file.add_sub_element(outputs_element, "StreamNetwork")
+            new_xml_file.add_sub_element(stream_network_element, "Name", file)
+            new_xml_file.add_sub_element(stream_network_element, "Path", "02_Analyses\\" + outputFolderBasename + "\\" + file)
+
+
+
+def getUUID():
+    return str(uuid.uuid4()).upper()
+
 
 if __name__ == '__main__':
     main(os.sys.argv[1],

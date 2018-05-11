@@ -122,6 +122,7 @@ class GrainSizeTool(object):
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
+        reload(GrainSize)
         GrainSize.main(parameters[0].valueAsText,
          parameters[1].valueAsText,
          parameters[2].valueAsText,

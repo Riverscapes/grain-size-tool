@@ -506,7 +506,7 @@ def writeXML(projectFolder):
                                ('xsi:noNamespaceSchemaLocation',
                                 "https://raw.githubusercontent.com/Riverscapes/Program/master/Project/XSD/V1/Project.xsd")])
 
-
+    new_xml_file.add_sub_element(new_xml_file.root, "Name", "GrainSizeProject")
     new_xml_file.add_sub_element(new_xml_file.root, "ProjectType", "GrainSize")
     addMetaData(new_xml_file)
     addRealizations(new_xml_file, projectFolder)
@@ -535,9 +535,11 @@ def addRealizations(new_xml_file, projectFolder):
     realizations_element = new_xml_file.add_sub_element(new_xml_file.root, "Realizations")
     grain_size_element = new_xml_file.add_sub_element(realizations_element,
                                                       "GrainSize",
-                                                      tags=[("dateCreated", datetime.now().isoformat()),
-                                                       ("guid", getUUID()),
-                                                       ("productVersion", "0.0.1")])
+                                                      tags=[("id", ""),
+                                                            ("dateCreated", datetime.now().isoformat()),
+                                                            ("guid", getUUID()),
+                                                            ("productVersion", "0.0.1")])
+    new_xml_file.add_sub_element(grain_size_element, "Name", "GrainSizeRealization")
     writeInputsXML(new_xml_file, grain_size_element, os.path.join(projectFolder, "01_Inputs"))
 
     analysesFolder = os.path.join(projectFolder, "02_Analyses")
@@ -565,12 +567,22 @@ def writeInputsXML(new_xml_file, grain_size_element, input_folder):
 def writeSingleInputXML(new_xml_file, inputs_element, nameOfInput, folderName, input_folder):
     folderPath = os.path.join(input_folder, folderName)
 
-    items_element = new_xml_file.add_sub_element(inputs_element, nameOfInput + "s")
-    for file in os.listdir(folderPath):
+    tempFiles = os.listdir(folderPath)
+    files = []
+    for file in tempFiles:
         if file.endswith(".shp") or file.endswith(".tif") or file.endswith("lyr") or file.endswith(".txt"):
-            item_element = new_xml_file.add_sub_element(items_element, nameOfInput)
-            new_xml_file.add_sub_element(item_element, "Name", file)
-            new_xml_file.add_sub_element(item_element, "Path", "01_Inputs\\" + folderName + "\\" + file)
+            files.append(file)
+
+    # we want the elements in a wrapper if there's more than one of them. Otherwise we don't
+    if len(files) > 1:
+        items_element = new_xml_file.add_sub_element(inputs_element, nameOfInput + "s")
+    else:
+        items_element = inputs_element
+
+    for file in files:
+        item_element = new_xml_file.add_sub_element(items_element, nameOfInput)
+        new_xml_file.add_sub_element(item_element, "Name", file)
+        new_xml_file.add_sub_element(item_element, "Path", "01_Inputs\\" + folderName + "\\" + file)
 
 
 def writeAnalysisXML(new_xml_file, analyses_element, output_folder):
@@ -583,9 +595,7 @@ def writeAnalysisXML(new_xml_file, analyses_element, output_folder):
     """
     analysis_element = new_xml_file.add_sub_element(analyses_element, "Analysis")
     new_xml_file.add_sub_element(analysis_element, "Name", os.path.basename(output_folder))
-
-    model_element = new_xml_file.add_sub_element(analysis_element, "Model")
-    outputs_element = new_xml_file.add_sub_element(model_element, "Outputs")
+    outputs_element = new_xml_file.add_sub_element(analysis_element, "Outputs")
     for file in os.listdir(output_folder):
         if file.endswith("lyr"):
             outputFolderBasename = os.path.basename(output_folder)
